@@ -1,4 +1,4 @@
-import asyncio, contextlib, json, os, shutil, signal, time
+import asyncio, contextlib, ipaddress, json, os, shutil, signal, time
 from contextlib import asynccontextmanager
 from urllib.parse import urlsplit
 import httpx
@@ -42,10 +42,18 @@ async def lifespan(app):
         lock.close()
 
 app=FastAPI(title='Local HotCRP simulation',lifespan=lifespan)
-app.add_middleware(TrustedHostMiddleware,allowed_hosts=['127.0.0.1','localhost','testserver'])
+ALLOWED_NETWORKS = [ipaddress.ip_network(n.strip()) for n in os.getenv('ALLOWED_NETWORKS','127.0.0.0/8,::1/128').split(',') if n.strip()]
+ALLOWED_HOSTS = ['127.0.0.1','localhost'] + [h.strip() for h in os.getenv('ALLOWED_HOSTS','').split(',') if h.strip()]
+app.add_middleware(TrustedHostMiddleware,allowed_hosts=ALLOWED_HOSTS)
 
 @app.middleware('http')
 async def local_only(request,call_next):
+    try:
+        peer=ipaddress.ip_address(request.client.host)
+    except (ValueError, AttributeError):
+        return JSONResponse({'detail':'Invalid client address'},403)
+    if not any(peer in network for network in ALLOWED_NETWORKS):
+        return JSONResponse({'detail':'Client subnet is not allowed'},403)
     origin=request.headers.get('origin')
     if request.headers.get('sec-fetch-site')=='cross-site' or (origin and urlsplit(origin).netloc!=request.headers.get('host')):
         return JSONResponse({'detail':'Cross-origin access is disabled'},403)

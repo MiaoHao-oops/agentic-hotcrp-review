@@ -35,7 +35,7 @@ systemctl --user stop hotcrp-sim
 journalctl --user -u hotcrp-sim -f
 ```
 
-已有前台服务运行时先停止，避免端口冲突。默认网页端口 `8765`，内部 PHP 端口 `8766`；内部 PHP 需要随机代理凭据，仅监听 loopback。不要把这套免登录工作区通过端口转发暴露到网络。
+已有前台服务运行时先停止，避免端口冲突。默认网页端口 `8765`，内部 PHP 端口 `8766`；内部 PHP 需要随机代理凭据，仅监听 loopback。局域网访问需配置下述子网限制；这套免登录工作区不用于公网访问。
 
 前台启动的可选环境变量：
 
@@ -44,6 +44,23 @@ CODEX_MODEL=your-model AGENT_CONCURRENCY=3 AGENT_TIMEOUT=1200 ./scripts/start.sh
 ```
 
 未设置 `CODEX_MODEL` 时沿用本机 Codex 配置与认证；不会把模型名写死。`CODEX_BIN` 可指定 CLI 绝对路径。`PORT`、`HOTCRP_PHP_PORT` 可改变两个本地端口。服务安装脚本记录当前 PATH 和 Codex 路径，修改后重新运行脚本或编辑 systemd override。
+
+## 同子网访问
+
+当前机器已启用局域网入口：**http://10.156.120.40:8765**，允许 `10.156.120.0/24` 及本机访问。访问者共享 Local Chair 身份、论文和 Codex 配额；并非独立用户账户。
+
+配置位于 `~/.config/systemd/user/hotcrp-sim.service.d/lan.conf`：
+
+```ini
+[Service]
+Environment="HOST=0.0.0.0"
+Environment="ALLOWED_HOSTS=10.156.120.40"
+Environment="ALLOWED_NETWORKS=127.0.0.0/8,::1/128,10.156.120.0/24"
+```
+
+更改后执行 `systemctl --user daemon-reload && systemctl --user restart hotcrp-sim`。当前 IP 来自 DHCP，变更后需同步更新允许的主机地址与访问 URL。PHP 的 8766 端口仍只监听本机，不能从局域网直接访问。启动脚本关闭转发头信任，子网判断使用真实连接来源。
+
+恢复仅本机访问：删除该 `lan.conf`，然后 daemon-reload 并重启服务。默认不配置上述环境变量时仅允许 loopback。
 
 ## 实现与数据
 
