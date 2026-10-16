@@ -14,10 +14,16 @@ $Opt = [
     'httpAuthLogin' => true, 'disableNewUsers' => true,
     'sessionName' => 'hcsim_' . $id,
     'docstore' => $root . '/data/documents/' . $id . '/%h%x',
-    'checkUpdates' => false,
-    'pages' => [[ 'name' => 'home/simulation', 'order' => 1100,
-        'print_function' => 'SimulationExtension::banner' ],
-        [ 'name' => 'paper/simulation', 'order' => 1005,
+    'checkUpdates' => false, 'localSimulation' => true,
+    'pages' => [(object) [ 'name' => 'home/simulation', 'order' => 1100,
         'print_function' => 'SimulationExtension::banner' ]]
 ];
 require_once $root . '/upstream/src/pages/p_simulation.php';
+
+foreach (["home", "paper", "signin", "search", "review"] as $page) {
+    $Opt["pages"][] = (object) ["name" => $page . "/simulation_login", "order" => 1,
+        "request_function" => "SimulationExtension::login"];
+}
+
+// A local chair is not a human PC member who needs reviewer-matching interests.
+$Opt["pages"][] = (object) ["name" => "__profilecheck/pc", "merge" => true, "allow_if" => false];

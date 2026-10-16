@@ -1,0 +1,4 @@
+-r requirements.txt
+pytest==9.1.1
+playwright==1.64.0
+reportlab==5.0.1

@@ -1,0 +1,10 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>HotCRP · Local review lab</title><link rel="stylesheet" href="/assets/style.css"></head>
+<body>
+<header><a href="/" class="brand">HotCRP <span>Local review lab</span></a><span class="local">● 本地模拟环境</span></header>
+<nav><a href="/">Conferences</a><span>Submission & peer review simulation</span><span id="connection">连接中…</span></nav>
+<div class="layout"><aside><div class="eyebrow">WORKSPACE</div><a href="/" class="side-link">所有会议 <span id="count">0</span></a><div class="side-note"><strong>真实界面，模拟审稿</strong><p>原版 HotCRP 负责投稿与 review 展示。Codex agents 独立阅读论文并给出审稿意见。</p><p>文件与结果存储在本机；论文内容会随 agent 请求发送给 Codex 配置的服务。</p></div><div class="side-note"><strong>审稿流程</strong><p>1. 调查会议规则<br>2. 在 HotCRP 上传并提交<br>3. 多 reviewer 独立评审<br>4. 阅读评分、意见与证据</p></div></aside>
+<main><div id="error" role="alert" hidden></div><section id="home"><div class="page-heading"><div><div class="eyebrow">CONFERENCE MANAGEMENT</div><h1>你的模拟审稿工作区</h1><p class="muted">从目标会议到完整 review，在本地走完投稿流程。</p></div></div>
+<section class="panel"><h2>创建目标会议 <small>New conference</small></h2><form id="create"><label>会议名称、年份与 track <span class="required">*</span><input name="name" placeholder="例如：OSDI 2026 · Research papers" required minlength="2" maxlength="200"></label><div class="form-row"><label>独立 reviewer 数量<select name="reviewers"><option>2</option><option selected>3</option><option>4</option><option>5</option></select></label><label>Review 语言<select name="language"><option>中文</option><option>English</option></select></label><button type="submit" class="primary" id="create-button">创建并调查会议 →</button></div><p class="hint">Codex 将检索会议官方信息。未公开的审稿规则会标记为模拟设置；本地投稿不受真实截止日期限制。</p></form></section>
+<section class="panel"><h2>会议列表 <small id="total"></small></h2><div id="conferences"></div></section></section><section id="detail" hidden></section>
+<footer>Powered by HotCRP · Local Codex simulation <span>非官方会议系统 · 不向真实会议提交</span></footer></main></div><script src="/assets/app.js" defer></script></body></html>

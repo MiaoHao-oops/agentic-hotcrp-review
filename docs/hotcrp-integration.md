@@ -2,9 +2,9 @@
 
 ## 调研结论
 
-可以直接扩展原版 HotCRP，复用实际的投稿、PDF 存储、review form、评分汇总与评论界面。无需再独立仿制这些页面。本目录 `upstream/hotcrp-master/` 已保存上游源码快照，未修改核心文件；来源和校验值见 `upstream/SOURCE.md`。
+可以直接扩展原版 HotCRP，复用实际的投稿、PDF 存储、review form、评分汇总与评论界面。无需再独立仿制这些页面。本目录 `upstream/` 已保存上游源码快照，未修改核心文件；当前源码以 Git submodule 固定在用户 fork 的开发提交。
 
-本文件是经源码核对的实现方案，不代表系统已经实现或完成运行验证。
+本文件保留初始设计。系统现已实现；实际实现与运行说明见根目录 README，验收结果见 validation.md。实际后端使用 HotCRP CLI domain bridge，而非 HTTP bearer API。
 
 ## 已核实的接入点
 
@@ -40,9 +40,7 @@
 
 ## 当前运行条件
 
-2026-10-16 检查结果：本机有已登录的 Codex CLI、Python、Node 和 Poppler；没有可执行的 PHP 和 MySQL 客户端。Docker 客户端存在，但当前用户无法访问 `/var/run/docker.sock`，`docker compose` 也未安装。无密码 sudo 不可用。
-
-因此，源码和接入可行性已确认，原版 HotCRP 的启动及端到端验证尚未完成。后续运行需要可用的 PHP 8.1+（含 MySQL、intl 支持）和 MariaDB，或可访问的容器运行环境。
+已安装 PHP 8.1、MariaDB 10.6 及所需扩展，使用本地 loopback 服务运行，无需 Docker。MariaDB 应用账户仅可访问 `hcsim_` 前缀数据库。用户密码未写入项目文件；随机数据库与代理凭据位于被 Git 忽略的 `data/`。
 
 ## 验收路径
 
