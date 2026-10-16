@@ -75,7 +75,8 @@ async def state():
     confs=rows('SELECT * FROM conferences ORDER BY created DESC')
     for c in confs:
         c['profile']=json.loads(c['profile']) if c['profile'] else None
-    jobs=rows('SELECT id,cid,run_id,kind,reviewer,status,error,created,started,finished FROM jobs ORDER BY created')
+    jobs=rows('SELECT id,cid,run_id,kind,reviewer,persona,status,error,created,started,finished FROM jobs ORDER BY created')
+    for j in jobs: j['persona']=json.loads(j['persona']) if j['persona'] else None
     return {'conferences':confs,'jobs':jobs,'runs':rows('SELECT id,cid,pid,title,status,fingerprint,created FROM runs ORDER BY created DESC'),
         'codex_available':bool(shutil.which(os.getenv('CODEX_BIN','codex'))),'model':os.getenv('CODEX_MODEL','本机 Codex 默认模型')}
 
@@ -119,8 +120,10 @@ async def retry(id:str):
 async def export(id:str):
     try: run=one('runs',id)
     except ValueError: raise HTTPException(404,'审稿轮次不存在')
-    jobs=rows('SELECT reviewer,status,result,error FROM jobs WHERE run_id=? ORDER BY reviewer',(id,))
-    for j in jobs: j['result']=json.loads(j['result']) if j['result'] else None
+    jobs=rows('SELECT reviewer,status,result,error,persona FROM jobs WHERE run_id=? ORDER BY reviewer',(id,))
+    for j in jobs:
+        j['result']=json.loads(j['result']) if j['result'] else None
+        j['persona']=json.loads(j['persona']) if j['persona'] else None
     return Response(json.dumps({'run':run,'reviews':jobs},ensure_ascii=False,indent=2),media_type='application/json',
                     headers={'Content-Disposition':f'attachment; filename="{id}.json"'})
 

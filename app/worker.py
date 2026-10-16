@@ -111,7 +111,9 @@ async def process(job):
         c = one('conferences', job['cid'])
         if job['kind'] == 'research':
             execute("UPDATE conferences SET status='researching',error=NULL WHERE id=?", (c['id'],))
-            raw = json.loads(job['result']) if job['result'] else await codex(job, research_prompt(c), ResearchProfile.model_json_schema())
+            raw = json.loads(job['result']) if job['result'] else None
+            if raw is None or any(k not in raw for k in ('dimensions', 'edition_comparison', 'public_pc')):
+                raw = await codex(job, research_prompt(c), ResearchProfile.model_json_schema())
             p = ResearchProfile.model_validate(raw)
             validate_research(p)
             for source in p.sources:
@@ -134,13 +136,17 @@ async def process(job):
             if job['result']:
                 review = Review.model_validate_json(job['result'])
             else:
+                if not job.get('persona'):
+                    from .reviewers import sample_persona
+                    job['persona'] = json.dumps(sample_persona(run, job['reviewer'], json.loads(c['profile'])), ensure_ascii=False)
+                    execute('UPDATE jobs SET persona=? WHERE id=?', (job['persona'], job['id']))
                 pdf = paper.get('sim_pdf_path')
                 if not pdf:
                     raise ValueError('投稿没有可读取的 PDF。')
                 shutil.copyfile(pdf, folder / 'paper.pdf')
                 await finish_blocking(extract_pdf, folder / 'paper.pdf',folder)
                 await command(['pdftoppm','-r','85','-png',str(folder/'paper.pdf'),str(folder/'page')],timeout=180)
-                raw = await codex(job,review_prompt(c,run,job['reviewer'],paper['sim_review_form']),(DetailedReview if json.loads(c['profile']).get('dimensions') else ReviewOutput).model_json_schema())
+                raw = await codex(job,review_prompt(c,run,job['reviewer'],paper['sim_review_form'],json.loads(job['persona'])),(DetailedReview if json.loads(c['profile']).get('dimensions') else ReviewOutput).model_json_schema())
                 review = Review.model_validate(raw)
                 if review.score > len(json.loads(c['profile'])['score_labels']):
                     raise ValueError('Agent 分数超出会议量表范围。')
@@ -159,6 +165,7 @@ async def process(job):
                 return '\n\n'+title+'\n'+'\n'.join('- '+s for s in items)
             comments = (f'SIMULATED REVIEW · Reviewer {job["reviewer"]+1}\n'
                 f'Submission snapshot: {run["fingerprint"][:16]} · Run {run["id"]}\n'
+                + ('Simulated reviewer perspective: ' + json.loads(job['persona'])['name'] + '\n' if job.get('persona') else '')
                 + review.recommendation + section('Strengths',review.strengths)
                 + section('Weaknesses',review.weaknesses) + section('Questions',review.questions)
                 + section('Evidence / page anchors',review.evidence)
