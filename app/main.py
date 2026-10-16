@@ -92,10 +92,22 @@ async def create(c:ConferenceInput):
     worker.new_job(id,'research')
     return {'id':id}
 
+@app.delete('/api/conferences/{cid}')
+async def delete(cid:str):
+    try:
+        await worker.delete_conference(cid)
+    except ValueError:
+        raise HTTPException(404,'会议不存在')
+    except Exception:
+        raise HTTPException(500,'删除未完成。请查看会议错误信息并再次点击删除重试。')
+    return {'ok':True}
+
 @app.post('/api/jobs/{id}/retry')
 async def retry(id:str):
     try: job=one('jobs',id)
     except ValueError: raise HTTPException(404,'任务不存在')
+    if one('conferences',job['cid'])['status'] in ('deleting','delete_failed'):
+        raise HTTPException(409,'会议正在删除，不能重试任务')
     if job['status']!='failed': raise HTTPException(409,'只有失败的任务可以重试')
     if job['run_id'] and one('runs',job['run_id'])['status']=='superseded':
         raise HTTPException(409,'论文已有新版本，请使用最新审稿任务')
@@ -117,18 +129,19 @@ async def slash(cid:str): return RedirectResponse(f'/c/{cid}/')
 
 @app.api_route('/c/{cid}/{path:path}',methods=['GET','POST','HEAD','OPTIONS'])
 async def proxy(cid:str,path:str,request:Request):
-    try: c=one('conferences',cid)
-    except ValueError: raise HTTPException(404,'会议不存在')
-    if c['status']!='ready': raise HTTPException(409,'会议尚未准备好，请返回首页查看任务')
-    body=bytearray()
-    async for chunk in request.stream():
-        body.extend(chunk)
-        if len(body)>55*1024*1024: raise HTTPException(413,'文件过大')
-    headers={k:v for k,v in request.headers.items() if k.lower() not in ('connection','transfer-encoding','x-sim-proxy','accept-encoding')}
-    headers['x-sim-proxy']=(DATA/'proxy-key').read_text().strip()
-    url=request.url.path+('?' + request.url.query if request.url.query else '')
-    r=await app.state.client.request(request.method,url,headers=headers,content=bytes(body))
-    response=Response(content=r.content,status_code=r.status_code)
-    response.raw_headers=[(k,v) for k,v in r.headers.raw if k.lower() not in
-        (b'content-length',b'content-encoding',b'transfer-encoding',b'connection')]
-    return response
+    async with worker.conference_lock(cid):
+        try: c=one('conferences',cid)
+        except ValueError: raise HTTPException(404,'会议不存在')
+        if c['status']!='ready': raise HTTPException(409,'会议尚未准备好，请返回首页查看任务')
+        body=bytearray()
+        async for chunk in request.stream():
+            body.extend(chunk)
+            if len(body)>55*1024*1024: raise HTTPException(413,'文件过大')
+        headers={k:v for k,v in request.headers.items() if k.lower() not in ('connection','transfer-encoding','x-sim-proxy','accept-encoding')}
+        headers['x-sim-proxy']=(DATA/'proxy-key').read_text().strip()
+        url=request.url.path+('?' + request.url.query if request.url.query else '')
+        r=await app.state.client.request(request.method,url,headers=headers,content=bytes(body))
+        response=Response(content=r.content,status_code=r.status_code)
+        response.raw_headers=[(k,v) for k,v in r.headers.raw if k.lower() not in
+            (b'content-length',b'content-encoding',b'transfer-encoding',b'connection')]
+        return response

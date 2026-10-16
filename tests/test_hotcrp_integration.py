@@ -15,7 +15,9 @@ def test_native_form_pdf_review_and_idempotence(tmp_path):
        'deadline_reference':'Open locally','review_guidance':'Synthetic test',
        'score_labels':['Very poor','Poor','Borderline','Good','Very good','Excellent'],
        'rubric_status':'Test rubric','sources':[{'title':'Fixture','url':'https://example.com','supports':'Test only'}],
-       'uncertainties':['Synthetic fixture']}
+       'uncertainties':['Synthetic fixture'],
+       'dimensions':[{'name':'Correctness','description':'Evidence quality','labels':['Weak','Strong'],
+                      'basis':'simulated','editions':['Test'],'source_urls':[], 'rationale':'Synthetic test'}]}
     path=tmp_path/'fixture.pdf'
     w=PdfWriter();w.add_blank_page(width=612,height=792);w.write(path)
     async def run():
@@ -31,15 +33,17 @@ def test_native_form_pdf_review_and_idempotence(tmp_path):
         assert core.Path(paper['sim_pdf_path']).is_file()
         fields={f['id']:f for f in paper['sim_review_form']}
         assert fields['s01']['values']==p['score_labels']
+        assert fields['s03']['values']==['Weak','Strong']
         assert fields['s02']['values']==['Low','Medium','High','Very high']
         review={'pid':pid,'email':'reviewer1@simulation.local','submitted':True,
-                's01':6,'s02':3,'t01':'A synthetic integration test.','t02':'Not an actual academic review.'}
+                's01':6,'s02':3,'s03':2,'t01':'A synthetic integration test.','t02':'Not an actual academic review.'}
         first=await core.bridge(cid,'review',review)
         second=await core.bridge(cid,'review',review)
         assert first['status']=='complete' and first['rid']==second['rid']
         final=(await core.bridge(cid,'paper',{'pid':pid}))[0]
         assert len(final['sim_reviews'])==1
         assert final['sim_reviews'][0]['OveMer']==6
+        assert final['sim_reviews'][0]['Cor']==2
         assert core.fingerprint(paper)==core.fingerprint(final)
     try:
         asyncio.run(run())

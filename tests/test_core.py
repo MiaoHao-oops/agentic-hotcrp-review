@@ -87,3 +87,77 @@ def test_score_form_mismatch_rejected():
     paper={'sim_review_form':[{'id':'s01','order':1,'values':['Accept','Reject']} ]}
     with pytest.raises(ValueError,match='评分表'):
         worker.validate_form(paper,{'score_labels':['Reject','Accept']})
+
+
+def test_delete_cancels_jobs_and_isolates_storage(isolated,monkeypatch):
+    cid='c000000000002'; other='c000000000003'
+    core.execute('INSERT INTO conferences VALUES(?,?,?,?,?,?,?,?)',(other,'Keep',3,'English','failed',None,None,time.time()))
+    jid=worker.new_job(cid,'research'); keep=worker.new_job(other,'research')
+    for parent, ident in [('documents',cid),('papers',cid),('jobs',jid),('jobs',keep)]:
+        folder=isolated/parent/ident;folder.mkdir(parents=True);(folder/'file').write_text('test')
+    cancelled=[];dropped=[]
+    def drop(target):
+        assert cancelled==[True]
+        dropped.append(target)
+    monkeypatch.setattr(worker,'drop_conference_database',drop)
+    async def run():
+        async def agent():
+            try: await asyncio.Event().wait()
+            finally: cancelled.append(True)
+        task=asyncio.create_task(agent());worker.ACTIVE_TASKS[jid]=(cid,task)
+        await asyncio.sleep(0)
+        try: await asyncio.gather(worker.delete_conference(cid),worker.delete_conference(cid))
+        finally: worker.ACTIVE_TASKS.pop(jid,None)
+    asyncio.run(run())
+    assert dropped==[cid]
+    assert not core.rows('SELECT * FROM conferences WHERE id=?',(cid,))
+    assert not (isolated/'jobs'/jid).exists()
+    assert not (isolated/'documents'/cid).exists()
+    assert (isolated/'jobs'/keep/'file').exists()
+    assert core.one('conferences',other)
+
+
+def test_delete_failure_can_retry(isolated,monkeypatch):
+    cid='c000000000002'
+    def broken(cid):raise RuntimeError('database unavailable')
+    monkeypatch.setattr(worker,'drop_conference_database',broken)
+    with pytest.raises(RuntimeError):asyncio.run(worker.delete_conference(cid))
+    assert core.one('conferences',cid)['status']=='delete_failed'
+    monkeypatch.setattr(worker,'drop_conference_database',lambda cid:None)
+    asyncio.run(worker.delete_conference(cid))
+    assert not core.rows('SELECT * FROM conferences')
+
+
+def test_cancel_waits_for_mutating_thread():
+    import threading
+    started=threading.Event();release=threading.Event();finished=[]
+    def mutate():
+        started.set();release.wait(3);finished.append(True)
+    async def run():
+        task=asyncio.create_task(core.finish_blocking(mutate))
+        await asyncio.to_thread(started.wait,3)
+        task.cancel();await asyncio.sleep(.01)
+        assert not task.done()
+        release.set()
+        with pytest.raises(asyncio.CancelledError):await task
+        assert finished==[True]
+    asyncio.run(run())
+
+
+def test_dimension_scores_require_complete_valid_coverage():
+    r=core.Review(score=3,confidence=2,summary='A complete synthetic review summary',strengths=['S'],weaknesses=['W'],questions=[],evidence=['p1'],limitations='L',recommendation='R',dimension_scores=[{'dimension':'Correctness','score':2,'justification':'Section 3 establishes the claim.'}])
+    p={'dimensions':[{'name':'Correctness','labels':['Weak','Strong']}]}
+    assert core.validate_dimensions(r,p)=={'s03':2}
+    r.dimension_scores[0].score=3
+    with pytest.raises(ValueError):core.validate_dimensions(r,p)
+    r.dimension_scores=[]
+    with pytest.raises(ValueError):core.validate_dimensions(r,p)
+
+
+def test_research_requires_traceable_historical_scales():
+    p=core.Profile(name='Test',summary='Test',topics=['Systems'],anonymity='blind',submission_instructions='Test',page_limit='Unknown',deadline_reference='Unknown',review_guidance='Test',score_labels=['Reject','Borderline','Accept'],rubric_status='Simulation',sources=[{'title':'Guide','url':'https://example.org/guide','supports':'Fixture'}],uncertainties=[],dimensions=[{'name':'Correctness','description':'Quality','labels':['Weak','Strong'],'basis':'historical','editions':['2025'],'source_urls':[],'rationale':'Fixture'}])
+    with pytest.raises(ValueError,match='来源'):core.validate_research(p)
+    p.dimensions[0].source_urls=['https://example.org/guide']
+    core.validate_research(p)
+    p.dimensions[0].source_urls=['https://unlisted.example/']
+    with pytest.raises(ValueError,match='sources'):core.validate_research(p)

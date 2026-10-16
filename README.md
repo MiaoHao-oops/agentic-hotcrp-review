@@ -86,3 +86,9 @@ RUN_HOTCRP_INTEGRATION=1 .venv/bin/python -m pytest -q  # 额外验证本机 PHP
 `data/demo-paper.pdf` 是明确标注为合成、缺少真实实验的测试稿，仅用于验收。单元测试不调用模型；真实端到端验证会消耗 Codex 配额。详细验收记录见 `docs/validation.md`。
 
 HotCRP 扩展维护在 fork 的 `local-agent-simulation` 分支，根仓库固定对应 submodule 提交。开发提交分两层：先在 `upstream/` 提交 HotCRP 修改，再在根仓库提交子模块指针和服务修改。不要将认证信息、论文、数据库或 agent 日志提交到 Git。
+
+### 删除会议与多维评分
+
+会议列表和详情页提供“删除会议”。确认后停止该会议的 agent，清理 MariaDB 数据库、投稿文件、审稿结果和任务目录；不可恢复。删除失败会保留状态供重试，服务重启会继续未完成的删除。
+
+新建会议调研本届及最近三届公开材料，包括官网 reviewer instructions、公开评分表、OpenReview、程序主席报告和官方存档。详情页展示逐届对比、维度定义、评分档位及来源，区分本届公开量表、历史量表和模拟补充。资料不可获得时明确记录缺口。各 reviewer 对每个维度评分并提供论文证据，写入 HotCRP 原生评分字段并包含在 JSON 导出中。旧会议保持原评分配置；使用新版调研需新建会议，避免更换已有 review 的分数含义。
