@@ -147,6 +147,7 @@ def init_db():
             c.execute('ALTER TABLE jobs ADD COLUMN progress TEXT')
         if 'persona' not in {r[1] for r in c.execute('PRAGMA table_info(jobs)')}:
             c.execute('ALTER TABLE jobs ADD COLUMN persona TEXT')
+        c.execute("UPDATE jobs SET status='queued' WHERE status='deploy_wait'")
         c.execute("UPDATE jobs SET status='failed',error='服务重启导致任务中断；可点击重试。' WHERE status='running'")
         c.execute("UPDATE conferences SET status='failed',error='服务重启；请重试会议任务。' WHERE status='researching'")
 

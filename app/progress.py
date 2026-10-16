@@ -19,8 +19,8 @@ def progress_for(job):
               'stage':stage, 'label':dict(steps).get(stage, '等待上游恢复'),
               'updated':saved.get('updated'), 'activity':[], 'last_event':None}
     if status!='running':
-        if status=='queued':result['index']=0
-        result['label']={'done':'已完成','queued':'排队等待 worker','failed':'失败，可重试','cancelled':'已取消','superseded':'历史版本，已停止'}.get(status,status)
+        if status in ('queued','deploy_wait'):result['index']=0
+        result['label']={'deploy_wait':'等待服务更新后继续','done':'已完成','queued':'排队等待 worker','failed':'失败，可重试','cancelled':'已取消','superseded':'历史版本，已停止'}.get(status,status)
         if status=='done':result['index']=len(steps)
         return result
     if stage=='retry':

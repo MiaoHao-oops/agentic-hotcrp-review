@@ -40,3 +40,11 @@ def test_missing_log_still_reports_local_review_stage():
     j=job();j.update(kind='review',progress=json.dumps({'stage':'extract'}))
     p=progress_for(j)
     assert p['label']=='提取正文与页面' and p['index']==1
+
+
+def test_deployment_queue_resumes_on_startup(tmp_path,monkeypatch):
+    monkeypatch.setattr(core,'DATA',tmp_path)
+    core.init_db()
+    core.execute("INSERT INTO jobs(id,status) VALUES('held','deploy_wait')")
+    core.init_db()
+    assert core.one('jobs','held')['status']=='queued'

@@ -1,6 +1,6 @@
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const labels={deleting:'删除中',delete_failed:'删除失败',cancelled:'已取消',queued:'等待中',researching:'调查会议中',running:'Agent 运行中',ready:'可投稿',reviewing:'审稿中',done:'已完成',failed:'需要重试',superseded:'历史版本'};
+const labels={deploy_wait:'等待服务更新',deleting:'删除中',delete_failed:'删除失败',cancelled:'已取消',queued:'等待中',researching:'调查会议中',running:'Agent 运行中',ready:'可投稿',reviewing:'审稿中',done:'已完成',failed:'需要重试',superseded:'历史版本'};
 const badge=s=>`<span class="badge ${esc(s)}">${labels[s]||esc(s)}</span>`;
 const date=t=>new Date(t*1000).toLocaleString('zh-CN');
 let data=null, busy=false, lastState="";
