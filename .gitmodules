@@ -1,3 +1,4 @@
 [submodule "upstream"]
 	path = upstream
 	url = https://github.com/MiaoHao-oops/hotcrp.git
+	branch = local-agent-simulation

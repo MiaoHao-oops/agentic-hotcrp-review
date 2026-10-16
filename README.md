@@ -68,4 +68,4 @@ RUN_HOTCRP_INTEGRATION=1 .venv/bin/python -m pytest -q  # 额外验证本机 PHP
 
 `data/demo-paper.pdf` 是明确标注为合成、缺少真实实验的测试稿，仅用于验收。单元测试不调用模型；真实端到端验证会消耗 Codex 配额。详细验收记录见 `docs/validation.md`。
 
-开发提交分两层：先在 `upstream/` 提交 HotCRP 修改，再在根仓库提交子模块指针和服务修改。不要将认证信息、论文、数据库或 agent 日志提交到 Git。
+HotCRP 扩展维护在 fork 的 `local-agent-simulation` 分支，根仓库固定对应 submodule 提交。开发提交分两层：先在 `upstream/` 提交 HotCRP 修改，再在根仓库提交子模块指针和服务修改。不要将认证信息、论文、数据库或 agent 日志提交到 Git。
