@@ -2,7 +2,7 @@
 
 ## 调研结论
 
-可以直接扩展原版 HotCRP，复用实际的投稿、PDF 存储、review form、评分汇总与评论界面。无需再独立仿制这些页面。本目录 `upstream/` 已保存上游源码快照，未修改核心文件；当前源码以 Git submodule 固定在用户 fork 的开发提交。
+可以直接扩展原版 HotCRP，复用实际的投稿、PDF 存储、review form、评分汇总与评论界面。无需再独立仿制这些页面。本目录 `upstream/` 已作为用户 fork 的子模块接入，包含少量模拟扩展；当前源码以 Git submodule 固定在用户 fork 的开发提交。
 
 本文件保留初始设计。系统现已实现；实际实现与运行说明见根目录 README，验收结果见 validation.md。实际后端使用 HotCRP CLI domain bridge，而非 HTTP bearer API。
 

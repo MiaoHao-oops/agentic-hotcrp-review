@@ -12,7 +12,7 @@ After=network.target
 
 [Service]
 Type=simple
-WorkingDirectory={quote(root)}
+WorkingDirectory={str(root).replace('%','%%')}
 Environment={quote('PATH='+os.environ['PATH'])}
 Environment={quote('CODEX_BIN='+(shutil.which('codex') or 'codex'))}
 ExecStart={quote(root/'scripts/start.sh')}

@@ -14,7 +14,7 @@ $Opt = [
     'httpAuthLogin' => true, 'disableNewUsers' => true,
     'sessionName' => 'hcsim_' . $id,
     'docstore' => $root . '/data/documents/' . $id . '/%h%x',
-    'checkUpdates' => false, 'localSimulation' => true,
+    'timezone' => 'Asia/Shanghai', 'checkUpdates' => false, 'localSimulation' => true,
     'pages' => [(object) [ 'name' => 'home/simulation', 'order' => 1100,
         'print_function' => 'SimulationExtension::banner' ]]
 ];

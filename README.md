@@ -62,6 +62,7 @@ CODEX_MODEL=your-model AGENT_CONCURRENCY=3 AGENT_TIMEOUT=1200 ./scripts/start.sh
 ```bash
 .venv/bin/pip install -r requirements-dev.txt
 .venv/bin/python -m pytest -q
+RUN_HOTCRP_INTEGRATION=1 .venv/bin/python -m pytest -q  # 额外验证本机 PHP/MariaDB
 .venv/bin/python scripts/make_demo_paper.py
 ```
 
