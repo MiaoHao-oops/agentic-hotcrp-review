@@ -143,6 +143,8 @@ def init_db():
         CREATE TABLE IF NOT EXISTS jobs(id TEXT PRIMARY KEY, cid TEXT, run_id TEXT, kind TEXT,
           reviewer INTEGER, status TEXT, result TEXT, error TEXT, created REAL, started REAL, finished REAL);
         ''')
+        if 'progress' not in {r[1] for r in c.execute('PRAGMA table_info(jobs)')}:
+            c.execute('ALTER TABLE jobs ADD COLUMN progress TEXT')
         if 'persona' not in {r[1] for r in c.execute('PRAGMA table_info(jobs)')}:
             c.execute('ALTER TABLE jobs ADD COLUMN persona TEXT')
         c.execute("UPDATE jobs SET status='failed',error='服务重启导致任务中断；可点击重试。' WHERE status='running'")
@@ -281,6 +283,11 @@ def fingerprint(paper):
     return hashlib.sha256(json.dumps(p, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
 
 
+def set_progress(job, stage, **extra):
+    execute('UPDATE jobs SET progress=? WHERE id=?',
+            (json.dumps(dict(stage=stage, updated=time.time(), **extra)), job['id']))
+
+
 class TransientCodexError(RuntimeError):
     pass
 
@@ -330,11 +337,13 @@ async def codex(job, prompt, schema):
             delay = 30 * (2 ** attempt)
             execute('UPDATE jobs SET error=? WHERE id=?',
                     (f'{exc}；{delay} 秒后自动重试（{attempt+1}/2）。', job['id']))
+            set_progress(job, 'retry', attempt=attempt+1, retry_at=time.time()+delay)
             await asyncio.sleep(delay)
             execute('UPDATE jobs SET error=NULL WHERE id=?', (job['id'],))
 
 
 async def codex_once(job, prompt, schema):
+    set_progress(job, 'agent')
     folder = DATA / 'jobs' / job['id']
     folder.mkdir(parents=True, exist_ok=True)
     (folder / 'schema.json').write_text(json.dumps(schema))

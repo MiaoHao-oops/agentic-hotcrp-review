@@ -75,8 +75,11 @@ async def state():
     confs=rows('SELECT * FROM conferences ORDER BY created DESC')
     for c in confs:
         c['profile']=json.loads(c['profile']) if c['profile'] else None
-    jobs=rows('SELECT id,cid,run_id,kind,reviewer,persona,status,error,created,started,finished FROM jobs ORDER BY created')
-    for j in jobs: j['persona']=json.loads(j['persona']) if j['persona'] else None
+    jobs=rows('SELECT id,cid,run_id,kind,reviewer,persona,progress,status,error,created,started,finished FROM jobs ORDER BY created')
+    from .progress import progress_for
+    for j in jobs:
+        j['persona']=json.loads(j['persona']) if j['persona'] else None
+        j['progress']=await asyncio.to_thread(progress_for,j)
     return {'conferences':confs,'jobs':jobs,'runs':rows('SELECT id,cid,pid,title,status,fingerprint,created FROM runs ORDER BY created DESC'),
         'codex_available':bool(shutil.which(os.getenv('CODEX_BIN','codex'))),'model':os.getenv('CODEX_MODEL','本机 Codex 默认模型')}
 

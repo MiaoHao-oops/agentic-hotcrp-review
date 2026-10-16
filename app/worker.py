@@ -108,12 +108,14 @@ def validate_form(paper, profile):
 
 async def process(job):
     try:
+        set_progress(job, 'prepare')
         c = one('conferences', job['cid'])
         if job['kind'] == 'research':
             execute("UPDATE conferences SET status='researching',error=NULL WHERE id=?", (c['id'],))
             raw = json.loads(job['result']) if job['result'] else None
             if raw is None or any(k not in raw for k in ('dimensions', 'edition_comparison', 'public_pc')):
                 raw = await codex(job, research_prompt(c), ResearchProfile.model_json_schema())
+            set_progress(job, 'validate')
             p = ResearchProfile.model_validate(raw)
             validate_research(p)
             for source in p.sources:
@@ -121,6 +123,7 @@ async def process(job):
                     raise ValueError('调查来源必须是 HTTP(S) URL')
             execute('UPDATE jobs SET result=? WHERE id=?',(p.model_dump_json(),job['id']))
             execute('UPDATE conferences SET profile=? WHERE id=?',(p.model_dump_json(),c['id']))
+            set_progress(job, 'publish')
             await finish_blocking(create_database, c['id'])
             await bridge(c['id'],'setup',settings_for(p.model_dump()))
             execute("UPDATE conferences SET status='ready',error=NULL WHERE id=?", (c['id'],))
@@ -143,15 +146,18 @@ async def process(job):
                 pdf = paper.get('sim_pdf_path')
                 if not pdf:
                     raise ValueError('投稿没有可读取的 PDF。')
+                set_progress(job, 'extract')
                 shutil.copyfile(pdf, folder / 'paper.pdf')
                 await finish_blocking(extract_pdf, folder / 'paper.pdf',folder)
                 await command(['pdftoppm','-r','85','-png',str(folder/'paper.pdf'),str(folder/'page')],timeout=180)
                 raw = await codex(job,review_prompt(c,run,job['reviewer'],paper['sim_review_form'],json.loads(job['persona'])),(DetailedReview if json.loads(c['profile']).get('dimensions') else ReviewOutput).model_json_schema())
+                set_progress(job, 'validate')
                 review = Review.model_validate(raw)
                 if review.score > len(json.loads(c['profile'])['score_labels']):
                     raise ValueError('Agent 分数超出会议量表范围。')
                 validate_dimensions(review, json.loads(c['profile']))
                 execute('UPDATE jobs SET result=? WHERE id=?',(review.model_dump_json(),job['id']))
+            set_progress(job, 'validate')
             dimension_values = validate_dimensions(review, json.loads(c['profile']))
             labels = json.loads(c['profile'])['score_labels']
             if review.score > len(labels):
@@ -172,6 +178,7 @@ async def process(job):
                 + section('Dimension assessments', [f'{d.dimension}: {d.score} — {d.justification}' for d in review.dimension_scores])
                 + '\n\nLimitations\n'+review.limitations)
             # Existing reviewer identity makes retries idempotent; historical results live in runs/jobs.
+            set_progress(job, 'publish')
             await bridge(c['id'],'review',{'pid':run['pid'],
                 'email':f'reviewer{job["reviewer"]+1}@simulation.local',
                 'given_name':'Simulated','family_name':f'Reviewer {job["reviewer"]+1}',
