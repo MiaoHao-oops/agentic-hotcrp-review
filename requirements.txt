@@ -1,0 +1,6 @@
+fastapi==0.143.2
+uvicorn==0.54.0
+httpx==0.28.1
+pymysql==1.2.3
+pypdf==6.20.1
+jsonschema==4.26.0
