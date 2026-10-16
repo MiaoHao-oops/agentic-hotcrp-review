@@ -72,7 +72,11 @@ class Review(BaseModel):
     recommendation: str
     dimension_scores: list[DimensionScore] = Field(default_factory=list)
 
-class DetailedReview(Review):
+class ReviewOutput(Review):
+    # API output fields must be required; cached legacy reviews may omit this field.
+    dimension_scores: list[DimensionScore]
+
+class DetailedReview(ReviewOutput):
     dimension_scores: list[DimensionScore] = Field(min_length=1, max_length=8)
 
 
@@ -288,7 +292,10 @@ async def codex(job, prompt, schema):
             await proc.wait()
             raise
     if proc.returncode or not output.exists():
-        raise RuntimeError(f'Codex 任务失败 (exit {proc.returncode})。详情见 data/jobs/{job["id"]}/stderr.log；检查 codex login 和模型配置后重试。')
+        events_path = folder / 'events.jsonl'
+        if events_path.exists() and 'invalid_json_schema' in events_path.read_text(errors='replace'):
+            raise RuntimeError('Codex 输出格式配置错误 (invalid_json_schema)，请更新服务后重试；详情见 data/jobs/' + job['id'] + '/events.jsonl。')
+        raise RuntimeError(f'Codex 任务失败 (exit {proc.returncode})。详情见 data/jobs/{job["id"]}/events.jsonl 和 stderr.log。')
     return json.loads(output.read_text())
 
 

@@ -161,3 +161,23 @@ def test_research_requires_traceable_historical_scales():
     core.validate_research(p)
     p.dimensions[0].source_urls=['https://unlisted.example/']
     with pytest.raises(ValueError,match='sources'):core.validate_research(p)
+
+
+@pytest.mark.parametrize('model',[core.ReviewOutput,core.DetailedReview,core.ResearchProfile])
+def test_codex_output_schemas_require_all_object_fields(model):
+    def check(node):
+        if isinstance(node,dict):
+            if node.get('type')=='object':
+                assert set(node['required'])==set(node['properties'])
+                assert node['additionalProperties'] is False
+            for value in node.values():check(value)
+        elif isinstance(node,list):
+            for value in node:check(value)
+    check(model.model_json_schema())
+
+
+def test_legacy_review_cache_remains_readable():
+    cached=dict(score=3,confidence=2,summary='A complete synthetic review summary',strengths=['S'],weaknesses=['W'],questions=[],evidence=['p1'],limitations='L',recommendation='R')
+    assert core.Review.model_validate(cached).dimension_scores==[]
+    with pytest.raises(ValidationError):core.ReviewOutput.model_validate(cached)
+    assert core.ReviewOutput.model_validate(dict(cached,dimension_scores=[])).dimension_scores==[]

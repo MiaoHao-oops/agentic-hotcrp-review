@@ -140,7 +140,7 @@ async def process(job):
                 shutil.copyfile(pdf, folder / 'paper.pdf')
                 await finish_blocking(extract_pdf, folder / 'paper.pdf',folder)
                 await command(['pdftoppm','-r','85','-png',str(folder/'paper.pdf'),str(folder/'page')],timeout=180)
-                raw = await codex(job,review_prompt(c,run,job['reviewer'],paper['sim_review_form']),(DetailedReview if json.loads(c['profile']).get('dimensions') else Review).model_json_schema())
+                raw = await codex(job,review_prompt(c,run,job['reviewer'],paper['sim_review_form']),(DetailedReview if json.loads(c['profile']).get('dimensions') else ReviewOutput).model_json_schema())
                 review = Review.model_validate(raw)
                 if review.score > len(json.loads(c['profile'])['score_labels']):
                     raise ValueError('Agent 分数超出会议量表范围。')
